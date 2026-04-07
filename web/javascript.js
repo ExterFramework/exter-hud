@@ -1,5 +1,6 @@
 let preferenceid = 1;
 let incar = false;
+const statusSelector = (name) => `.icon-cont[name="${name}"]`;
 
 var hudSettings = [
   (health = {
@@ -280,7 +281,7 @@ function refreshInputs() {
 // STATUS HUD
 
 function updateBar(name, value) {
-  $(".icon-cont[name=" + name + "")
+  $(statusSelector(name))
     .children()
     .css("background-size", "100% " + value + "%");
   if (
@@ -291,12 +292,12 @@ function updateBar(name, value) {
     name == "dollar"
   ) {
     if (value <= 0) {
-      $(".icon-cont[name=" + name + "")
+      $(statusSelector(name))
         .parent()
         .parent()
         .css("display", "none");
     } else {
-      $(".icon-cont[name=" + name + "")
+      $(statusSelector(name))
         .parent()
         .parent()
         .css("display", "block");
@@ -309,12 +310,12 @@ function updateBar(name, value) {
           hudSettings[i].show == false ||
           value == false
         ) {
-          $(".icon-cont[name=" + name + "")
+          $(statusSelector(name))
             .parent()
             .parent()
             .css("display", "none");
         } else {
-          $(".icon-cont[name=" + name + "")
+          $(statusSelector(name))
             .parent()
             .parent()
             .css("display", "block");
@@ -506,15 +507,18 @@ window.addEventListener("message", function (event) {
     if (event.data.guides) {
       $("._options_1hwi9_191[menuid=help]").html("");
       for (let i = 0; i < event.data.guides.length; i++) {
-        let html = `
-                <div class="_option_1hwi9_191">
-                    <div class="_texts_1hwi9_215">
-                    <div class="_title_1hwi9_44">${event.data.guides[i].Title}</div>
-                    <div class="_description_1hwi9_53">${event.data.guides[i].Description}</div>
-                    </div>
-                </div>
-                `;
-        $("._options_1hwi9_191[menuid=help]").append(html);
+        const optionEl = $("<div>").addClass("_option_1hwi9_191");
+        const textsEl = $("<div>").addClass("_texts_1hwi9_215");
+        $("<div>")
+          .addClass("_title_1hwi9_44")
+          .text(event.data.guides[i].Title || "")
+          .appendTo(textsEl);
+        $("<div>")
+          .addClass("_description_1hwi9_53")
+          .text(event.data.guides[i].Description || "")
+          .appendTo(textsEl);
+        optionEl.append(textsEl);
+        $("._options_1hwi9_191[menuid=help]").append(optionEl);
       }
     }
     loadPreference();

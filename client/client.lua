@@ -3,9 +3,9 @@ local water = 100
 
 local playerInCar = false 
 local vehicle = nil
-local speedMultiplier = 2.23694
 local minimapEnabled = false
 local wasMinimapEnabled = true
+local radarConfigured = false
 
 local speedometerfps60 = 0 
 local speedometerfps45 = 250 
@@ -190,74 +190,40 @@ function roundedRadar()
         DisplayRadar(0)
         return 
     end 
-    Citizen.CreateThread(function()
-        DisplayRadar(1)
+    DisplayRadar(1)
+
+    if not radarConfigured then
         SetBlipAlpha(GetNorthRadarBlip(), 0.0)
-        local screenX, screenY = GetScreenResolution()
-        local modifier = screenY / screenX
+        SetMinimapComponentPosition("minimap", "L", "B", -0.0055, -0.0252, 0.150, 0.18888)
+        SetMinimapComponentPosition("minimap_mask", "L", "B", 0.025, 0.015, 0.111, 0.159)
+        SetMinimapComponentPosition("minimap_blur", "L", "B", -0.035, -0.005, 0.266, 0.237)
+        SetMinimapClipType(0)
+        radarConfigured = true
+    end
 
-        local baseXOffset = 0.0046875
-        local baseYOffset = 0.74
+    if minimapEnabled == false and wasMinimapEnabled == true then
+        DisplayRadar(0)
+        SetBigmapActive(true, false)
+        Citizen.Wait(0)
+        SetBigmapActive(false, false)
+        DisplayRadar(1)
+        minimapEnabled = true
+    end
 
-        local baseSize    = 0.20 -- 20% of screen
-
-        local baseXWidth  = 0.1313 -- baseSize * modifier -- %
-        local baseYHeight = baseSize -- %
-
-        local baseXNumber = screenX * baseSize  -- 256
-        local baseYNumber = screenY * baseSize  -- 144
-
-        local radiusX     = baseXNumber / 2     -- 128
-        local radiusY     = baseYNumber / 2     -- 72
-
-        local innerSquareSideSizeX = math.sqrt(radiusX * radiusX * 2) -- 181.0193
-        local innerSquareSideSizeY = math.sqrt(radiusY * radiusY * 2) -- 101.8233
-
-        local innerSizeX = ((innerSquareSideSizeX / screenX) - 0.01) * modifier
-        local innerSizeY = innerSquareSideSizeY / screenY
-
-        local innerOffsetX = (baseXWidth - innerSizeX) / 2
-        local innerOffsetY = (baseYHeight - innerSizeY) / 2
-
-        local innerMaskOffsetPercentX = (innerSquareSideSizeX / baseXNumber) * modifier
-
-        local function setPos(type, posX, posY, sizeX, sizeY)
-            SetMinimapComponentPosition(type, "I", "I", posX, posY, sizeX, sizeY)
-        end
-          local function setPosLB(type, posX, posY, sizeX, sizeY)
-              SetMinimapComponentPosition(type, "L", "B", posX, posY, sizeX, sizeY)
-          end
-
-          setPosLB("minimap",       -0.0055,  -0.0252,  0.150, 0.18888)
-          setPosLB("minimap_mask",  0.025,    0.015,  0.111, 0.159)
-          setPosLB("minimap_blur",  -0.035,    -0.005,  0.266, 0.237)
-          SetMinimapClipType(0)
-
-        Wait(500)
-        if minimapEnabled == false and wasMinimapEnabled == true then
-            DisplayRadar(0)
-            SetBigmapActive(true, false)
-                
-            Citizen.Wait(0)
-            SetBigmapActive(false, false)
-            DisplayRadar(1)
-            minimapEnabled = true
-        end
-
-        if minimapEnabled and wasMinimapEnabled == false then 
-            DisplayRadar(0)
-        end 
-    end)
+    if minimapEnabled and wasMinimapEnabled == false then 
+        DisplayRadar(0)
+    end
 end
 
 RegisterNUICallback('speedometerfps', function(data)
-    if data.fps == "30" then 
+    local fpsValue = tostring(data.fps)
+    if fpsValue == "30" then 
         speedometerfps = speedometerfps30
-    elseif data.fps == "60" then 
+    elseif fpsValue == "60" then 
         speedometerfps = speedometerfps60
-    elseif data.fps == "15" then 
+    elseif fpsValue == "15" then 
         speedometerfps = speedometerfps15
-    elseif data.fps == "45" then 
+    elseif fpsValue == "45" then 
         speedometerfps = speedometerfps45
     end 
 end)
@@ -345,9 +311,8 @@ function radioenter(status, number)
     })
 end
 
-exports("talkingRadio", talkingRadio)
 exports('talking', talking)
-exports('radioenter', radioenter, number)
+exports('radioenter', radioenter)
 exports('enchantment', enchantment)
 
 AddEventHandler("pma-voice:setTalkingMode", function(voiceMode, enabled, radioEnabled, callEnabled)

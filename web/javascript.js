@@ -23,6 +23,11 @@ var hudSettings = [
     show: true,
     value: 95,
   }),
+  (stress = {
+    name: "stress",
+    show: true,
+    value: 0,
+  }),
   (oxygen = {
     name: "oxygen",
     show: true,
@@ -186,7 +191,8 @@ function changeHudSettingInputs(data) {
     data.name == "health" ||
     data.name == "armor" ||
     data.name == "food" ||
-    data.name == "water"
+    data.name == "water" ||
+    data.name == "stress"
   ) {
     $("." + data.name + "_input").prop("checked", data.show);
     $("." + data.name + "_input")
@@ -232,7 +238,8 @@ function saveSettings() {
           name == "health" ||
           name == "armor" ||
           name == "food" ||
-          name == "water"
+          name == "water" ||
+          name == "stress"
         ) {
           hudSettings[i].value = $("." + name + "_input")
             .parent()
@@ -305,11 +312,14 @@ function updateBar(name, value) {
   } else {
     for (let i = 0; i < hudSettings.length; i++) {
       if (hudSettings[i].name == name) {
-        if (
-          (value >= hudSettings[i].value && hudSettings[i].value != 100) ||
-          hudSettings[i].show == false ||
-          value == false
-        ) {
+        let shouldHide = false;
+        if (name == "stress") {
+          shouldHide = value <= hudSettings[i].value;
+        } else {
+          shouldHide = value >= hudSettings[i].value && hudSettings[i].value != 100;
+        }
+
+        if (shouldHide || hudSettings[i].show == false || value == false) {
           $(statusSelector(name))
             .parent()
             .parent()
@@ -489,6 +499,7 @@ window.addEventListener("message", function (event) {
     updateBar("armor", event.data.armor);
     updateBar("food", event.data.food);
     updateBar("water", event.data.water);
+    updateBar("stress", event.data.stress);
     updateBar("oxygen", event.data.oxy);
     if (incar) {
       updateBar("nitrous", event.data.nitrous);

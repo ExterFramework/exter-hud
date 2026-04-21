@@ -537,22 +537,64 @@ function GetVehicleIn(vehicle)
     return Auto
 end
 
-if Config.Framework == "qbcore" then
-    RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst) 
-        hunger = newHunger
-        thirst = newThirst
+local function normalizePercent(value)
+    if type(value) ~= 'number' then
+        return 100
+    end
+
+    if value > 100 then
+        return math.floor(value / 100)
+    end
+
+    return math.floor(value)
+end
+
+local function setupNeedsHandlers()
+    local framework = (Config.Framework or 'auto'):lower()
+
+    if framework == 'auto' then
+        if GetResourceState('qbx_core') == 'started' then
+            framework = 'qbox'
+        elseif GetResourceState('qb-core') == 'started' then
+            framework = 'qbcore'
+        elseif GetResourceState('es_extended') == 'started' then
+            framework = 'esx'
+        else
+            framework = 'standalone'
+        end
+    end
+
+    if framework == 'qbcore' or framework == 'qbox' then
+        RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
+            hunger = normalizePercent(newHunger)
+            thirst = normalizePercent(newThirst)
+        end)
+        return
+    end
+
+    if framework == 'esx' then
+        RegisterNetEvent('esx_status:onTick')
+        AddEventHandler('esx_status:onTick', function(status)
+            if type(status) ~= 'table' then
+                return
+            end
+
+            for i = 1, #status do
+                if status[i].name == 'hunger' then
+                    hunger = normalizePercent(status[i].val / 10000)
+                elseif status[i].name == 'thirst' then
+                    thirst = normalizePercent(status[i].val / 10000)
+                end
+            end
+        end)
+        return
+    end
+
+    -- standalone/custom: keep defaults unless another resource triggers the custom event.
+    RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
+        hunger = normalizePercent(newHunger)
+        thirst = normalizePercent(newThirst)
     end)
 end
 
-if Config.Framework == "esx" then
-    RegisterNetEvent('esx_status:onTick')
-    AddEventHandler('esx_status:onTick', function(status)
-        for i=1, #status, 1 do
-            if status[i].name == 'hunger' then
-                hunger = status[i].val / 10000
-            elseif status[i].name == 'thirst' then
-                thirst = status[i].val / 10000
-            end
-        end
-    end)
-end
+setupNeedsHandlers()

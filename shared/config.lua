@@ -1,117 +1,167 @@
-hunger = 100  -- dont change this
-thirst = 100 -- dont change this
+hunger = hunger or 100 -- do not change default initialization
+thirst = thirst or 100 -- do not change default initialization
 
-Config = {}
+Config = Config or {}
 
-Config.Framework = "qbcore"  -- qbcore or esx or custom
+-- Supported: qbcore, esx, qbox, standalone, custom, auto
+Config.Framework = Config.Framework or "auto"
 
-Config.useElectricVehicles = true -- True if you are uising electric vehicles, false if not
+Config.useElectricVehicles = true
+Config.SpeedUnit = "MPH" -- MPH or KMH
 
-Config.SpeedUnit = "MPH" -- MPH or KMH (in index.html change the line "1555" to show speed in KMH instead of MPH)
-
-Config.Guidemenu = {     -- You can add more just copy and paste the ones that already exists.
+Config.Guidemenu = {
     {
-        Title = "Finding your Windows Communication Device", 
+        Title = "Finding your Windows Communication Device",
         Description = "EXTERCITY 2.0"
     },
     {
-        Title = "FPS Capping for UI lag:", 
+        Title = "FPS Capping for UI lag:",
         Description = "EXTERCITY 2.0"
     },
 }
 
-RegisterCommand('fuelxd', function(source, args, rawCommand)
-    local newFuelLevel = 8.0 -- Atur level fuel baru dalam persen
-    local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1), false)
+-- Seatbelt eject behaviour defaults
+Config.ejectVelocity = Config.ejectVelocity or 45.0
+Config.unknownEjectVelocity = Config.unknownEjectVelocity or 70.0
+Config.unknownModifier = Config.unknownModifier or 17.0
+Config.minDamage = Config.minDamage or 2000.0
 
-    if DoesEntityExist(vehicle) then
-        if GetResourceState('cdn-fuel') == 'started' then
-            exports['cdn-fuel']:SetFuel(vehicle, newFuelLevel)
-        elseif GetResourceState('ps-fuel') == 'started' then
-            exports['ps-fuel']:setFuel(vehicle, newFuelLevel)
-        elseif GetResourceState('ox_fuel') == 'started' then
-            exports['ox_fuel']:setFuel(vehicle, newFuelLevel)
-        elseif GetResourceState('LegacyFuel') == 'started' then
-            exports['LegacyFuel']:SetFuel(vehicle, newFuelLevel)
-        else
-            print("No compatible fuel system found.")
+local fuelResources = {
+    "cdn-fuel",
+    "qb-fuel",
+    "ps-fuel",
+    "ox_fuel",
+    "LegacyFuel",
+    "legacyfuel",
+}
+
+local function getStartedFuelResource()
+    for i = 1, #fuelResources do
+        local res = fuelResources[i]
+        if GetResourceState(res) == "started" then
+            return res
         end
-    else
-        print("You are not inside a vehicle.")
     end
-end, false)
+    return nil
+end
 
+local function tryExport(resource, fn, ...)
+    local ok, result = pcall(function()
+        return exports[resource][fn](...)
+    end)
 
-RegisterCommand('enginexd', function(source, args, rawCommand)
-    local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1), false)
-
-    if DoesEntityExist(vehicle) then
-        SetVehicleEngineHealth(vehicle, 0.0)
-        print("The vehicle's engine was damaged.")
-    else
-        print("You are not inside a vehicle.")
+    if ok then
+        return true, result
     end
-end, false)
 
+    return false, nil
+end
 
 function getFuel(veh)
-    if GetResourceState('cdn-fuel') == 'started' then
-        return exports['cdn-fuel']:GetFuel(veh, false)
-    elseif GetResourceState('ps-fuel') == 'started' then
-        return exports['ps-fuel']:getFuel(veh)
-    elseif GetResourceState('ox_fuel') == 'started' then
-        return exports['ox_fuel']:getFuel(veh)
-    elseif GetResourceState('LegacyFuel') == 'started' then
-        return exports['LegacyFuel']:GetFuel(veh)
-    else
-        return 100.0 -- Default jika tidak ada fuel system yang aktif
+    if not veh or veh == 0 then
+        return 100.0
     end
+
+    local activeFuel = getStartedFuelResource()
+    if not activeFuel then
+        return 100.0
+    end
+
+    if activeFuel == "cdn-fuel" then
+        local ok, fuel = tryExport(activeFuel, "GetFuel", veh, false)
+        return ok and fuel or 100.0
+    end
+
+    if activeFuel == "qb-fuel" then
+        local ok, fuel = tryExport(activeFuel, "GetFuel", veh)
+        if ok then
+            return fuel
+        end
+
+        ok, fuel = tryExport(activeFuel, "getFuel", veh)
+        return ok and fuel or 100.0
+    end
+
+    if activeFuel == "ps-fuel" then
+        local ok, fuel = tryExport(activeFuel, "getFuel", veh)
+        return ok and fuel or 100.0
+    end
+
+    if activeFuel == "ox_fuel" then
+        local ok, fuel = tryExport(activeFuel, "getFuel", veh)
+        return ok and fuel or 100.0
+    end
+
+    if activeFuel == "LegacyFuel" or activeFuel == "legacyfuel" then
+        local ok, fuel = tryExport(activeFuel, "GetFuel", veh)
+        return ok and fuel or 100.0
+    end
+
+    return 100.0
+end
+
+function setFuel(veh, level)
+    if not veh or veh == 0 then
+        return false
+    end
+
+    local activeFuel = getStartedFuelResource()
+    if not activeFuel then
+        return false
+    end
+
+    if activeFuel == "cdn-fuel" then
+        return tryExport(activeFuel, "SetFuel", veh, level)
+    end
+
+    if activeFuel == "qb-fuel" then
+        local ok = tryExport(activeFuel, "SetFuel", veh, level)
+        if ok then
+            return true
+        end
+
+        ok = tryExport(activeFuel, "setFuel", veh, level)
+        return ok
+    end
+
+    if activeFuel == "ps-fuel" then
+        return tryExport(activeFuel, "setFuel", veh, level)
+    end
+
+    if activeFuel == "ox_fuel" then
+        return tryExport(activeFuel, "setFuel", veh, level)
+    end
+
+    if activeFuel == "LegacyFuel" or activeFuel == "legacyfuel" then
+        return tryExport(activeFuel, "SetFuel", veh, level)
+    end
+
+    return false
 end
 
 function getElectro(veh)
-    if GetResourceState('cdn-fuel') == 'started' then
-        return exports['cdn-fuel']:GetFuel(veh, false)
-    elseif GetResourceState('ps-fuel') == 'started' then
-        return exports['ps-fuel']:getFuel(veh)
-    elseif GetResourceState('ox_fuel') == 'started' then
-        return exports['ox_fuel']:getFuel(veh)
-    elseif GetResourceState('LegacyFuel') == 'started' then
-        return exports['LegacyFuel']:GetFuel(veh)
-    else
-        return 100.0 -- Default jika tidak ada fuel system yang aktif
-    end
+    return getFuel(veh)
 end
 
-
 function SeatBeltActived()
-    -- exports['your_notification']:SendAlert('inform', "Seatbelt enabled")
+    -- exports['your_notification']:SendAlert('inform', 'Seatbelt enabled')
 end
 
 function SeatBeltDesactivated()
-    -- exports['your_notification']:SendAlert('inform', "Seatbelt enabled")
+    -- exports['your_notification']:SendAlert('inform', 'Seatbelt disabled')
 end
 
 function SeatBeltError()
-    -- exports['your_notification']:SendAlert('error', "You cant enable seatbelt on this car")
+    -- exports['your_notification']:SendAlert('error', "You can't enable seatbelt on this vehicle")
 end
 
 function getNitrousLevel()
-    local nitrous = true 
-    if nitrous then 
-        return 0
-    else 
-        return false 
-    end 
-end 
+    return 0
+end
 
 function getHarnessLevel()
-    local harness = true 
-    if harness then 
-        return 0
-    else 
-        return false 
-    end 
-end 
+    return 0
+end
 
 Config.electricVehicles = {
     [GetHashKey('voltic')] = true,
@@ -121,9 +171,34 @@ Config.electricVehicles = {
     [GetHashKey('cyclone')] = true,
     [GetHashKey('neon')] = true,
     [GetHashKey('tezeract')] = true,
-    -- Add more model hashes as needed
 }
 
 PoliceCars = {
-    "police",
+    'police',
 }
+
+if not IsDuplicityVersion() then
+    RegisterCommand('fuelxd', function()
+        local newFuelLevel = 8.0
+        local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
+        if DoesEntityExist(vehicle) and vehicle ~= 0 then
+            if not setFuel(vehicle, newFuelLevel) then
+                print('[exter-hud] No compatible fuel system found for setting fuel level.')
+            end
+        else
+            print('[exter-hud] You are not inside a vehicle.')
+        end
+    end, false)
+
+    RegisterCommand('enginexd', function()
+        local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
+        if DoesEntityExist(vehicle) and vehicle ~= 0 then
+            SetVehicleEngineHealth(vehicle, 0.0)
+            print("[exter-hud] The vehicle engine was damaged.")
+        else
+            print('[exter-hud] You are not inside a vehicle.')
+        end
+    end, false)
+end

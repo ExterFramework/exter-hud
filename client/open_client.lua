@@ -33,8 +33,8 @@ end)
 if Config.Framework == "custom" then
     RegisterNetEvent('hud:client:UpdateNeeds')
     AddEventHandler('hud:client:UpdateNeeds', function(newHunger, newThirst) -- you need to use this
-        statusHud["hunger"] = newHunger -- This was my example
-        statusHud["thirst"] = newThirst -- This was my example
+        hunger = newHunger
+        thirst = newThirst
     end)
 end
 

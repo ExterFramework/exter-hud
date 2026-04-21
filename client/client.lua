@@ -53,7 +53,8 @@ Citizen.CreateThread(function()
             health = health,
             armor = armor,
             food = hunger,
-            water = thirst,  
+            water = thirst,
+            stress = stress,
             oxy = oxy,
             nitrous = getNitrousLevel(),
             harness = getHarnessLevel(),
@@ -546,6 +547,10 @@ local function normalizePercent(value)
         return math.floor(value / 100)
     end
 
+    if value < 0 then
+        return 0
+    end
+
     return math.floor(value)
 end
 
@@ -565,9 +570,12 @@ local function setupNeedsHandlers()
     end
 
     if framework == 'qbcore' or framework == 'qbox' then
-        RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
+        RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst, newStress)
             hunger = normalizePercent(newHunger)
             thirst = normalizePercent(newThirst)
+            if newStress ~= nil then
+                stress = normalizePercent(newStress)
+            end
         end)
         return
     end
@@ -584,6 +592,8 @@ local function setupNeedsHandlers()
                     hunger = normalizePercent(status[i].val / 10000)
                 elseif status[i].name == 'thirst' then
                     thirst = normalizePercent(status[i].val / 10000)
+                elseif status[i].name == 'stress' then
+                    stress = normalizePercent(status[i].val / 10000)
                 end
             end
         end)
@@ -591,10 +601,21 @@ local function setupNeedsHandlers()
     end
 
     -- standalone/custom: keep defaults unless another resource triggers the custom event.
-    RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
+    RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst, newStress)
         hunger = normalizePercent(newHunger)
         thirst = normalizePercent(newThirst)
+        if newStress ~= nil then
+            stress = normalizePercent(newStress)
+        end
     end)
 end
+
+RegisterNetEvent('hud:client:UpdateStress', function(newStress)
+    stress = normalizePercent(newStress)
+end)
+
+RegisterNetEvent('qb-hud:client:UpdateStress', function(newStress)
+    stress = normalizePercent(newStress)
+end)
 
 setupNeedsHandlers()

@@ -1,5 +1,6 @@
 hunger = hunger or 100 -- do not change default initialization
 thirst = thirst or 100 -- do not change default initialization
+stress = stress or 0
 
 Config = Config or {}
 

@@ -32,9 +32,12 @@ end)
 
 if Config.Framework == "custom" then
     RegisterNetEvent('hud:client:UpdateNeeds')
-    AddEventHandler('hud:client:UpdateNeeds', function(newHunger, newThirst) -- you need to use this
+    AddEventHandler('hud:client:UpdateNeeds', function(newHunger, newThirst, newStress) -- you need to use this
         hunger = newHunger
         thirst = newThirst
+        if newStress ~= nil then
+            stress = newStress
+        end
     end)
 end
 
